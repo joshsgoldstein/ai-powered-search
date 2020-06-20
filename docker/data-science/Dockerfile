@@ -24,15 +24,20 @@ RUN cd /usr/local && ln -s spark-${APACHE_SPARK_VERSION}-bin-hadoop${HADOOP_VERS
 # Spark Config
 ENV SPARK_HOME=/usr/local/spark
 ENV PYTHONPATH=$SPARK_HOME/python:$SPARK_HOME/python/lib/py4j-0.10.7-src.zip \
-    SPARK_OPTS="--driver-java-options=-Xms1024M --driver-java-options=-Xmx4096M --driver-java-options=-Dlog4j.logLevel=info" \
+    SPARK_OPTS="--driver-java-options=-Xms1024M --driver-java-options=-Xmx4096M --spark.driver.extraLibraryPath=/usr/local/spark/lib/spark-solr-${SPARK_SOLR_VERSION}-shaded.jar --spark.executor.extraLibraryPath=/usr/local/spark/lib/spark-solr-${SPARK_SOLR_VERSION}-shaded.jar --driver-java-options=-Dlog4j.logLevel=info" \
     PATH=$PATH:$SPARK_HOME/bin
+ENV SPARK_CLASSPATH=$SPARK_CLASSPATH:/usr/local/spark/lib/spark-solr-${SPARK_SOLR_VERSION}-shaded.jar
+ENV PYSPARK_SUBMIT_ARGS="--jars /usr/local/spark/lib/spark-solr-${SPARK_SOLR_VERSION}-shaded.jar"
 
 # Install Spark-Solr
 Run echo $SPARK_HOME
-Run cd /tmp && \
+Run mkdir /usr/local/spark/lib/ && cd /usr/local/spark/lib/ && \
     wget -q https://repo1.maven.org/maven2/com/lucidworks/spark/spark-solr/${SPARK_SOLR_VERSION}/spark-solr-${SPARK_SOLR_VERSION}-shaded.jar && \
-    $SPARK_HOME/bin/spark-shell --jars spark-solr-${SPARK_SOLR_VERSION}-shaded.jar && \
-    rm spark-solr-${SPARK_SOLR_VERSION}-shaded.jar
+    export EXTRA_CLASSPATH=/usr/local/spark/lib/spark-solr-${SPARK_SOLR_VERSION}-shaded.jar && \
+    $SPARK_HOME/bin/spark-shell --jars spark-solr-${SPARK_SOLR_VERSION}-shaded.jar 
+    #&& \ rm spark-solr-${SPARK_SOLR_VERSION}-shaded.jar
+
+Run chmod a+rwx /usr/local/spark/lib/spark-solr-${SPARK_SOLR_VERSION}-shaded.jar
 
 # python -c "import sys, json; content=json.load(sys.stdin); print(content['preferred']+content['path_info'])") && \
 #    echo "f42d79f96aad12c880d47cc772043ae84e73d5595093206b6b7ae5818faadc1bcda21c57c09c9dd3436d68ebf61d791199cfc1bb8969367fc04e8309933df7b3 *spark-solr-${SPARK_SOLR_VERSION}-shaded.jar" | sha512sum -c - && \
@@ -58,6 +63,8 @@ WORKDIR ~
 # Pull Requirements, Install Notebooks
 COPY requirements.txt ./
 RUN pip install -r requirements.txt
+
+RUN git clone https://github.com/ai-powered-search/retrotech.git ~/retrotech
 
 COPY notebooks ~/notebooks/
 WORKDIR ~/notebooks
